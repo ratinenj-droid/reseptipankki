@@ -139,14 +139,14 @@
     <div class="add-card">
       <div id="edit-banner" class="edit-banner" style="display:none">✏️ Muokataan reseptiä</div>
       <div class="add-tabs" id="add-tabs-row">
-        <div class="add-tab active" onclick="switchAddTab('url')">Hae URL:sta</div>
+        <div class="add-tab active" onclick="switchAddTab('url')">Liitä reseptiteksti</div>
         <div class="add-tab" onclick="switchAddTab('manual')">Manuaalisesti</div>
       </div>
       <div class="add-body" id="add-url">
-        <div class="field-label">Reseptin verkko-osoite</div>
-        <input type="url" id="url-input" placeholder="https://www.valio.fi/reseptit/..." />
+        <div class="field-label">Kopioi reseptisivulta koko teksti ja liitä tähän</div>
+        <textarea id="url-input" placeholder="Kopioi reseptin nimi, ainekset ja ohjeet tähän..." style="min-height:140px;"></textarea>
         <div id="url-status" style="display:none"></div>
-        <button class="fetch-btn" onclick="fetchRecipe()">Hae resepti</button>
+        <button class="fetch-btn" onclick="fetchRecipe()">Tunnista resepti</button>
         <div id="url-preview" style="display:none; margin-top:16px;">
           <div style="height:0.5px;background:#e0e0d8;margin-bottom:16px;"></div>
           <div class="field-label">Nimi</div><input type="text" id="prev-name" />
@@ -448,9 +448,9 @@
   }
 
   window.fetchRecipe = async function() {
-    const url = document.getElementById('url-input').value.trim();
-    if (!url) { setStatus('url-status', 'Syötä verkko-osoite', 'error'); return; }
-    setStatus('url-status', 'Haetaan reseptiä...', 'loading');
+    const txt = document.getElementById('url-input').value.trim();
+    if (!txt) { setStatus('url-status', 'Liitä reseptiteksti kenttään', 'error'); return; }
+    setStatus('url-status', 'Tunnistetaan reseptiä...', 'loading');
     document.querySelector('.fetch-btn').disabled = true;
     document.getElementById('url-preview').style.display = 'none';
     try {
@@ -459,14 +459,14 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514', max_tokens: 1000,
-          messages: [{ role: 'user', content: `Hae tästä URL:sta reseptitiedot ja palauta VAIN JSON:\nURL: ${url}\n\n{"name":"nimi","emoji":"emoji","time":"X min","baseServings":4,"diff":"easy tai med","ingredients":[{"name":"aines","amount":"400 g","base":400,"unit":"g"}]}\n\nJos ei löydy: {"error":"Reseptiä ei löydy"}` }]
+          messages: [{ role: 'user', content: `Pura tästä reseptitekstistä tiedot ja palauta VAIN JSON, ei muuta tekstiä:\n\n${txt}\n\nMuoto:\n{"name":"reseptin nimi","emoji":"sopiva emoji","time":"X min","baseServings":4,"diff":"easy tai med","ingredients":[{"name":"aines","amount":"400 g","base":400,"unit":"g"}]}\n\nbase on luku ilman yksikköä, unit on yksikkö erikseen. Jos teksti ei ole resepti: {"error":"Ei resepti"}` }]
         })
       });
       const data = await resp.json();
       const text = data.content.find(b => b.type === 'text')?.text || '';
       const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
       if (parsed.error) { setStatus('url-status', parsed.error, 'error'); document.querySelector('.fetch-btn').disabled = false; return; }
-      setStatus('url-status', 'Resepti löytyi! Tarkista tiedot.', 'success');
+      setStatus('url-status', 'Resepti tunnistettu! Tarkista tiedot.', 'success');
       document.getElementById('prev-name').value = parsed.name || '';
       document.getElementById('prev-emoji').value = parsed.emoji || '🍽';
       document.getElementById('prev-time').value = parsed.time || '';
@@ -477,7 +477,7 @@
       ).join('');
       document.getElementById('url-preview').style.display = 'block';
     } catch(e) {
-      setStatus('url-status', 'Virhe: reseptiä ei pystytty hakea.', 'error');
+      setStatus('url-status', 'Virhe tunnistuksessa. Kokeile manuaalista lisäystä.', 'error');
     }
     document.querySelector('.fetch-btn').disabled = false;
   };
