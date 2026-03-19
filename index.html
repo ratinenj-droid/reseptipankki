@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Reseptipankki</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1D9E75" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; min-height: 100vh; display: flex; justify-content: center; }
+    .app { width: 100%; max-width: 430px; background: #f5f5f0; min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar { background: white; padding: 16px 20px 12px; border-bottom: 0.5px solid #e0e0d8; position: sticky; top: 0; z-index: 10; }
+    .topbar-title { font-size: 34px; font-family: 'Lilita One', Impact, sans-serif; font-weight: 400; color: #1D9E75; line-height: 1.05; }
+    .topbar-sub { font-size: 13px; color: #888; margin-top: 2px; }
+    .tabs { display: flex; background: white; border-bottom: 0.5px solid #e0e0d8; position: sticky; top: 69px; z-index: 10; }
+    .tab { flex: 1; padding: 12px 4px; text-align: center; font-size: 13px; cursor: pointer; color: #888; border-bottom: 2px solid transparent; }
+    .tab.active { color: #1D9E75; border-bottom-color: #1D9E75; font-weight: 500; }
+    .content { padding: 16px; flex: 1; }
+    .section-label { font-size: 11px; font-weight: 500; color: #999; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+
+    /* Recipe cards */
+    .recipe-card { background: white; border-radius: 12px; border: 0.5px solid #e0e0d8; margin-bottom: 10px; overflow: hidden; }
+    .recipe-header { padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+    .recipe-emoji { width: 44px; height: 44px; border-radius: 10px; background: #E1F5EE; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; cursor: pointer; }
+    .recipe-info { flex: 1; min-width: 0; cursor: pointer; }
+    .recipe-name { font-size: 15px; font-weight: 500; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .recipe-meta { font-size: 11px; color: #888; margin-top: 3px; }
+    .recipe-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .btn-icon { background: none; border: 0.5px solid #ddd; border-radius: 8px; padding: 6px 9px; font-size: 14px; cursor: pointer; }
+    .btn-icon:active { background: #f5f5f5; }
+    .btn-list { background: #1D9E75; color: white; border: none; border-radius: 8px; padding: 7px 11px; font-size: 12px; cursor: pointer; }
+
+    /* Detail view */
+    .detail-view { background: white; border-radius: 12px; border: 0.5px solid #e0e0d8; margin-bottom: 12px; overflow: hidden; }
+    .detail-header { padding: 16px; border-bottom: 0.5px solid #e0e0d8; display: flex; align-items: center; gap: 12px; }
+    .detail-emoji { font-size: 32px; }
+    .detail-name { font-size: 18px; font-weight: 500; color: #1a1a1a; }
+    .detail-meta { font-size: 12px; color: #888; margin-top: 3px; }
+    .scale-section { padding: 12px 16px; border-bottom: 0.5px solid #e0e0d8; background: #f9f9f7; }
+    .scale-row { display: flex; align-items: center; }
+    .scale-label { font-size: 13px; color: #666; flex: 1; }
+    .scale-controls { display: flex; align-items: center; gap: 12px; }
+    .scale-btn { width: 32px; height: 32px; border-radius: 50%; border: 0.5px solid #ddd; background: white; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .scale-val { font-size: 18px; font-weight: 500; color: #1a1a1a; min-width: 24px; text-align: center; }
+    .scale-hint { font-size: 11px; color: #888; margin-top: 6px; }
+    .ing-list { padding: 6px 0; }
+    .ing-row { padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 0.5px solid #f0f0ec; }
+    .ing-row:last-child { border-bottom: none; }
+    .ing-name { font-size: 14px; color: #1a1a1a; }
+    .ing-amount { font-size: 13px; color: #666; font-weight: 500; text-align: right; }
+    .ing-amount.scaled { color: #1D9E75; }
+    .orig-amount { font-size: 11px; color: #aaa; }
+    .detail-footer { padding: 12px 16px; display: flex; gap: 8px; border-top: 0.5px solid #e0e0d8; }
+    .btn-full { flex: 1; padding: 11px; border-radius: 10px; font-size: 14px; cursor: pointer; border: none; font-family: inherit; }
+    .btn-primary { background: #1D9E75; color: white; }
+    .btn-secondary { background: none; border: 0.5px solid #ddd !important; color: #666; }
+
+    /* Add/Edit form */
+    .add-card { background: white; border-radius: 12px; border: 0.5px solid #e0e0d8; margin-bottom: 16px; overflow: hidden; }
+    .add-tabs { display: flex; border-bottom: 0.5px solid #e0e0d8; }
+    .add-tab { flex: 1; padding: 12px; text-align: center; font-size: 13px; cursor: pointer; color: #888; background: #f9f9f7; }
+    .add-tab.active { color: #1D9E75; background: white; font-weight: 500; }
+    .add-body { padding: 16px; }
+    input, textarea, select {
+      width: 100%; border: 0.5px solid #ddd; border-radius: 10px;
+      padding: 10px 13px; font-size: 14px; color: #1a1a1a; background: white;
+      font-family: inherit; margin-bottom: 10px; outline: none; -webkit-appearance: none;
+    }
+    textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+    input:focus, textarea:focus, select:focus { border-color: #1D9E75; }
+    .field-label { font-size: 12px; color: #888; margin-bottom: 5px; }
+    .save-btn, .fetch-btn { width: 100%; background: #1D9E75; color: white; border: none; border-radius: 10px; padding: 12px; font-size: 14px; cursor: pointer; font-family: inherit; margin-top: 4px; }
+    .save-btn:disabled, .fetch-btn:disabled { background: #ccc; cursor: default; }
+    .cancel-btn { width: 100%; background: none; border: 0.5px solid #ddd; color: #888; border-radius: 10px; padding: 11px; font-size: 14px; cursor: pointer; font-family: inherit; margin-top: 8px; }
+    .status-msg { font-size: 12px; padding: 9px 12px; border-radius: 8px; margin-bottom: 10px; }
+    .status-loading { background: #FAEEDA; color: #854F0B; }
+    .status-success { background: #E1F5EE; color: #0F6E56; }
+    .status-error { background: #FCEBEB; color: #A32D2D; }
+    .ingredient-row { display: flex; gap: 6px; margin-bottom: 8px; align-items: center; }
+    .ingredient-row input { margin-bottom: 0; }
+    .ingredient-row input:first-child { flex: 2; }
+    .ingredient-row input:nth-child(2) { flex: 1; }
+    .add-ing-btn { background: none; border: 0.5px dashed #ccc; color: #888; border-radius: 10px; padding: 9px; font-size: 13px; cursor: pointer; width: 100%; margin-bottom: 10px; font-family: inherit; }
+    .del-ing { background: none; border: none; color: #bbb; cursor: pointer; font-size: 20px; padding: 0 3px; flex-shrink: 0; }
+    .edit-banner { background: #FAEEDA; color: #854F0B; font-size: 12px; padding: 9px 16px; border-bottom: 0.5px solid #FAC775; }
+
+    /* Shopping list */
+    .shop-card { background: white; border-radius: 12px; border: 0.5px solid #e0e0d8; overflow: hidden; margin-bottom: 12px; }
+    .shop-header { padding: 14px 16px; border-bottom: 0.5px solid #e0e0d8; display: flex; align-items: center; justify-content: space-between; }
+    .shop-title { font-size: 15px; font-weight: 500; color: #1a1a1a; }
+    .clear-btn { font-size: 13px; color: #D85A30; cursor: pointer; background: none; border: none; font-family: inherit; }
+    .shop-item { padding: 13px 16px; border-bottom: 0.5px solid #f0f0ec; display: flex; align-items: center; gap: 13px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .shop-item:last-child { border-bottom: none; }
+    .shop-item.done { background: #f9f9f7; }
+    .checkbox { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid #ccc; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; transition: all 0.15s; }
+    .checkbox.checked { background: #1D9E75; border-color: #1D9E75; color: white; }
+    .item-name { font-size: 15px; color: #1a1a1a; flex: 1; }
+    .item-name.done { text-decoration: line-through; color: #aaa; }
+    .item-amount { font-size: 13px; color: #888; }
+    .progress-bar { height: 4px; background: #f0f0ec; }
+    .progress-fill { height: 100%; background: #1D9E75; transition: width 0.3s; }
+
+    /* Misc */
+    .empty-state { text-align: center; padding: 40px 20px; color: #aaa; font-size: 15px; line-height: 1.7; }
+    .counter { background: #D85A30; color: white; border-radius: 10px; font-size: 11px; padding: 1px 6px; margin-left: 4px; }
+    .tag { font-size: 11px; padding: 2px 7px; border-radius: 10px; }
+    .tag-easy { background: #E1F5EE; color: #0F6E56; }
+    .tag-med { background: #FAEEDA; color: #854F0B; }
+    .source-badge { font-size: 10px; background: #f0f0ec; color: #888; border-radius: 4px; padding: 1px 5px; margin-left: 4px; vertical-align: middle; }
+    .back-btn { background: none; border: none; color: #888; font-size: 14px; cursor: pointer; padding: 0 0 10px; font-family: inherit; display: flex; align-items: center; gap: 4px; }
+    .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; z-index: 100; font-size: 15px; color: #1D9E75; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="topbar-title">🍴 Reseptipankki</div>
+    <div class="topbar-sub" id="sync-status">Yhdistetään...</div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('reseptit')">Reseptit</div>
+    <div class="tab" onclick="showTab('lisaa')">+ Lisää</div>
+    <div class="tab" onclick="showTab('ostoslista')">Ostoslista<span class="counter" id="counter" style="display:none">0</span></div>
+  </div>
+
+  <!-- RESEPTIT -->
+  <div class="content" id="tab-reseptit">
+    <div class="section-label">Omat reseptit</div>
+    <div id="recipes-container"></div>
+    <div id="detail-container" style="display:none"></div>
+    <div id="no-recipes" class="empty-state" style="display:none">Ei reseptejä vielä.<br>Lisää ensimmäinen Lisää-välilehdeltä!</div>
+  </div>
+
+  <!-- LISÄÄ -->
+  <div class="content" id="tab-lisaa" style="display:none">
+    <div class="add-card">
+      <div id="edit-banner" class="edit-banner" style="display:none">✏️ Muokataan reseptiä</div>
+      <div class="add-tabs" id="add-tabs-row">
+        <div class="add-tab active" onclick="switchAddTab('url')">Hae URL:sta</div>
+        <div class="add-tab" onclick="switchAddTab('manual')">Manuaalisesti</div>
+      </div>
+      <div class="add-body" id="add-url">
+        <div class="field-label">Reseptin verkko-osoite</div>
+        <input type="url" id="url-input" placeholder="https://www.valio.fi/reseptit/..." />
+        <div id="url-status" style="display:none"></div>
+        <button class="fetch-btn" onclick="fetchRecipe()">Hae resepti</button>
+        <div id="url-preview" style="display:none; margin-top:16px;">
+          <div style="height:0.5px;background:#e0e0d8;margin-bottom:16px;"></div>
+          <div class="field-label">Nimi</div><input type="text" id="prev-name" />
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <div style="flex:0 0 auto;"><div class="field-label">Kuvake</div><input type="text" id="prev-emoji" style="width:64px;margin-bottom:0;" maxlength="2"/></div>
+            <div style="flex:1;"><div class="field-label">Vaikeustaso</div><select id="prev-diff" style="margin-bottom:0;"><option value="easy">Helppo</option><option value="med">Keskivaikea</option></select></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <div style="flex:1;"><div class="field-label">Aika</div><input type="text" id="prev-time" placeholder="30 min" style="margin-bottom:0;"/></div>
+            <div style="flex:1;"><div class="field-label">Alkup. annokset</div><input type="number" id="prev-servings" placeholder="4" style="margin-bottom:0;" min="1"/></div>
+          </div>
+          <div class="field-label">Ainekset (tarkista)</div>
+          <div id="prev-ings"></div>
+          <button class="add-ing-btn" onclick="addIngRow('prev-ings')">+ Lisää aines</button>
+          <button class="save-btn" onclick="saveFromPreview()">Tallenna resepti</button>
+          <button class="cancel-btn" onclick="cancelPreview()">Peruuta</button>
+        </div>
+      </div>
+      <div class="add-body" id="add-manual" style="display:none">
+        <input type="hidden" id="edit-id" value="" />
+        <div class="field-label">Nimi</div><input type="text" id="man-name" placeholder="esim. Lohikeitto" />
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <div style="flex:0 0 auto;"><div class="field-label">Kuvake</div><input type="text" id="man-emoji" value="🍳" style="width:64px;margin-bottom:0;" maxlength="2"/></div>
+          <div style="flex:1;"><div class="field-label">Vaikeustaso</div><select id="man-diff" style="margin-bottom:0;"><option value="easy">Helppo</option><option value="med">Keskivaikea</option></select></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <div style="flex:1;"><div class="field-label">Aika</div><input type="text" id="man-time" placeholder="30 min" style="margin-bottom:0;"/></div>
+          <div style="flex:1;"><div class="field-label">Alkup. annokset</div><input type="number" id="man-servings" placeholder="4" style="margin-bottom:0;" min="1"/></div>
+        </div>
+        <div class="field-label" style="margin-top:4px;">Ainekset</div>
+        <div id="man-ings">
+          <div class="ingredient-row"><input type="text" placeholder="Aines"/><input type="text" placeholder="Määrä (esim. 400 g)"/><button class="del-ing" onclick="delIng(this)">×</button></div>
+          <div class="ingredient-row"><input type="text" placeholder="Aines"/><input type="text" placeholder="Määrä"/><button class="del-ing" onclick="delIng(this)">×</button></div>
+        </div>
+        <button class="add-ing-btn" onclick="addIngRow('man-ings')">+ Lisää aines</button>
+        <div class="field-label">Ohjeet (vapaaehtoinen)</div>
+        <textarea id="man-instructions" placeholder="Valmistusohjeet..."></textarea>
+        <button class="save-btn" onclick="saveManual()">Tallenna resepti</button>
+        <button class="cancel-btn" onclick="cancelEdit()">Peruuta</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OSTOSLISTA -->
+  <div class="content" id="tab-ostoslista" style="display:none">
+    <div id="list-empty" class="empty-state">Ei aineksia listalla.<br>Avaa resepti ja lisää se ostoslistalle!</div>
+    <div id="list-content" style="display:none;">
+      <div class="shop-card">
+        <div class="shop-header"><div class="shop-title">🛒 Ostoslista</div><button class="clear-btn" onclick="clearList()">Tyhjennä</button></div>
+        <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+        <div id="items-container"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDhbf4cEg6UfN4mV3ayC6YxOBYOUexLQ48",
+    authDomain: "reseptipankki-b96c0.firebaseapp.com",
+    projectId: "reseptipankki-b96c0",
+    storageBucket: "reseptipankki-b96c0.firebasestorage.app",
+    messagingSenderId: "746208206204",
+    appId: "1:746208206204:web:97c485300d995a31c2d8f9"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const recipesCol = collection(db, "recipes");
+
+  // State
+  let recipes = [];
+  let shoppingList = JSON.parse(localStorage.getItem('shoppingList') || '{}');
+  let checked = JSON.parse(localStorage.getItem('checked') || '{}');
+  let openRecipeId = null;
+  let scaleServings = {};
+
+  // Sync status
+  function setSyncStatus(msg) {
+    document.getElementById('sync-status').textContent = msg;
+  }
+
+  // Listen to Firestore in real-time
+  onSnapshot(recipesCol, (snapshot) => {
+    recipes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    recipes.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+    setSyncStatus('Synkronoitu ✓');
+    if (document.getElementById('tab-reseptit').style.display !== 'none') renderRecipes();
+  }, (err) => {
+    setSyncStatus('Yhteysvirhe ⚠️');
+  });
+
+  // Save shopping list to localStorage
+  function saveShoppingList() {
+    localStorage.setItem('shoppingList', JSON.stringify(shoppingList));
+    localStorage.setItem('checked', JSON.stringify(checked));
+  }
+
+  // Tab switching
+  window.showTab = function(t) {
+    ['reseptit','lisaa','ostoslista'].forEach(id => {
+      document.getElementById('tab-'+id).style.display = id === t ? 'block' : 'none';
+    });
+    document.querySelectorAll('.tab').forEach((el, i) => el.classList.toggle('active', ['reseptit','lisaa','ostoslista'][i] === t));
+    if (t === 'reseptit') renderRecipes();
+    if (t === 'ostoslista') renderList();
+  };
+
+  function renderRecipes() {
+    const rc = document.getElementById('recipes-container');
+    const dc = document.getElementById('detail-container');
+    const none = document.getElementById('no-recipes');
+    if (recipes.length === 0) { rc.innerHTML = ''; dc.innerHTML = ''; dc.style.display = 'none'; none.style.display = 'block'; return; }
+    none.style.display = 'none';
+    if (openRecipeId) {
+      const r = recipes.find(x => x.id === openRecipeId);
+      if (!r) { openRecipeId = null; }
+      else { rc.innerHTML = ''; dc.style.display = 'block'; dc.innerHTML = renderDetail(r); return; }
+    }
+    dc.style.display = 'none';
+    rc.innerHTML = recipes.map(r => `
+      <div class="recipe-card">
+        <div class="recipe-header">
+          <div class="recipe-emoji" onclick="openDetail('${r.id}')">${r.emoji}</div>
+          <div class="recipe-info" onclick="openDetail('${r.id}')">
+            <div class="recipe-name">${r.name}<span class="source-badge">${r.source === 'url' ? 'URL' : 'oma'}</span></div>
+            <div class="recipe-meta">${r.time} · ${r.baseServings} annosta · <span class="tag ${r.diff === 'easy' ? 'tag-easy' : 'tag-med'}">${r.diff === 'easy' ? 'Helppo' : 'Keskivaikea'}</span></div>
+          </div>
+          <div class="recipe-actions">
+            <button class="btn-icon" onclick="editRecipe('${r.id}')">✏️</button>
+            <button class="btn-icon" onclick="confirmDelete('${r.id}')">🗑</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  function renderDetail(r) {
+    const s = scaleServings[r.id] || r.baseServings;
+    const factor = s / r.baseServings;
+    const ings = (r.ingredients || []).map(ing => {
+      const isScaled = factor !== 1 && ing.base;
+      const scaled = isScaled ? formatAmount(ing.base * factor, ing.unit) : ing.amount;
+      return `<div class="ing-row">
+        <span class="ing-name">${ing.name}</span>
+        <span class="ing-amount ${isScaled ? 'scaled' : ''}">${scaled}${isScaled ? `<br><span class="orig-amount">orig. ${ing.amount}</span>` : ''}</span>
+      </div>`;
+    }).join('');
+    return `
+      <button class="back-btn" onclick="closeDetail()">← Takaisin</button>
+      <div class="detail-view">
+        <div class="detail-header">
+          <div class="detail-emoji">${r.emoji}</div>
+          <div>
+            <div class="detail-name">${r.name}</div>
+            <div class="detail-meta">${r.time} · <span class="tag ${r.diff === 'easy' ? 'tag-easy' : 'tag-med'}">${r.diff === 'easy' ? 'Helppo' : 'Keskivaikea'}</span></div>
+          </div>
+        </div>
+        <div class="scale-section">
+          <div class="scale-row">
+            <div class="scale-label">Annokset <span style="color:#aaa;font-size:11px;">(alkup. ${r.baseServings})</span></div>
+            <div class="scale-controls">
+              <button class="scale-btn" onclick="changeScale('${r.id}',-1)">−</button>
+              <span class="scale-val">${s}</span>
+              <button class="scale-btn" onclick="changeScale('${r.id}',1)">+</button>
+            </div>
+          </div>
+          ${factor !== 1 ? `<div class="scale-hint">Skaalattu ×${factor % 1 === 0 ? factor : factor.toFixed(2)} — alkuperäiset näkyvät alla</div>` : ''}
+        </div>
+        <div class="ing-list">${ings}</div>
+        <div class="detail-footer">
+          <button class="btn-full btn-secondary" onclick="editRecipe('${r.id}')">✏️ Muokkaa</button>
+          <button class="btn-full btn-primary" onclick="addToListFromDetail('${r.id}')">+ Ostoslistalle</button>
+        </div>
+      </div>`;
+  }
+
+  function formatAmount(val, unit) {
+    const r = val % 1 === 0 ? val : parseFloat(val.toFixed(1));
+    return unit ? r + ' ' + unit : r.toString();
+  }
+
+  window.openDetail = function(id) {
+    openRecipeId = id;
+    if (!scaleServings[id]) {
+      const r = recipes.find(x => x.id === id);
+      if (r) scaleServings[id] = r.baseServings;
+    }
+    renderRecipes();
+  };
+
+  window.closeDetail = function() { openRecipeId = null; renderRecipes(); };
+
+  window.changeScale = function(id, delta) {
+    const r = recipes.find(x => x.id === id);
+    if (!r) return;
+    scaleServings[id] = Math.max(1, (scaleServings[id] || r.baseServings) + delta);
+    renderRecipes();
+  };
+
+  window.addToListFromDetail = function(id) {
+    const r = recipes.find(x => x.id === id);
+    if (!r) return;
+    const s = scaleServings[id] || r.baseServings;
+    const factor = s / r.baseServings;
+    (r.ingredients || []).forEach(ing => {
+      if (ing.name) shoppingList[ing.name] = ing.base && factor !== 1 ? formatAmount(ing.base * factor, ing.unit) : ing.amount;
+    });
+    saveShoppingList();
+    updateCounter();
+    showTab('ostoslista');
+  };
+
+  window.confirmDelete = async function(id) {
+    if (!confirm('Poistetaanko resepti?')) return;
+    if (openRecipeId === id) openRecipeId = null;
+    await deleteDoc(doc(db, 'recipes', id));
+  };
+
+  window.editRecipe = function(id) {
+    const r = recipes.find(x => x.id === id);
+    if (!r) return;
+    openRecipeId = null;
+    document.getElementById('edit-id').value = id;
+    document.getElementById('man-name').value = r.name;
+    document.getElementById('man-emoji').value = r.emoji;
+    document.getElementById('man-diff').value = r.diff;
+    document.getElementById('man-time').value = r.time;
+    document.getElementById('man-servings').value = r.baseServings;
+    document.getElementById('man-instructions').value = r.instructions || '';
+    document.getElementById('man-ings').innerHTML = (r.ingredients || []).map(ing =>
+      `<div class="ingredient-row"><input type="text" value="${ing.name}" placeholder="Aines"/><input type="text" value="${ing.amount}" placeholder="Määrä"/><button class="del-ing" onclick="delIng(this)">×</button></div>`
+    ).join('');
+    document.getElementById('edit-banner').style.display = 'block';
+    document.getElementById('add-tabs-row').style.display = 'none';
+    document.getElementById('add-url').style.display = 'none';
+    document.getElementById('add-manual').style.display = 'block';
+    showTab('lisaa');
+  };
+
+  window.cancelEdit = function() {
+    clearManualForm();
+    document.getElementById('edit-banner').style.display = 'none';
+    document.getElementById('add-tabs-row').style.display = 'flex';
+    showTab('reseptit');
+  };
+
+  window.saveManual = async function() {
+    const name = document.getElementById('man-name').value.trim();
+    if (!name) { alert('Lisää reseptin nimi'); return; }
+    const ings = collectIngs('man-ings');
+    const baseServings = parseInt(document.getElementById('man-servings').value) || 4;
+    const editId = document.getElementById('edit-id').value;
+    const recipe = {
+      name,
+      emoji: document.getElementById('man-emoji').value || '🍳',
+      time: document.getElementById('man-time').value || '?',
+      baseServings,
+      diff: document.getElementById('man-diff').value,
+      source: editId ? 'edited' : 'manual',
+      instructions: document.getElementById('man-instructions').value,
+      ingredients: ings
+    };
+    if (editId) {
+      await updateDoc(doc(db, 'recipes', editId), recipe);
+      delete scaleServings[editId];
+    } else {
+      recipe.createdAt = serverTimestamp();
+      await addDoc(recipesCol, recipe);
+    }
+    clearManualForm();
+    document.getElementById('edit-banner').style.display = 'none';
+    document.getElementById('add-tabs-row').style.display = 'flex';
+    showTab('reseptit');
+  };
+
+  function clearManualForm() {
+    ['edit-id','man-name','man-time','man-servings','man-instructions'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('man-emoji').value = '🍳';
+    document.getElementById('man-ings').innerHTML = `
+      <div class="ingredient-row"><input type="text" placeholder="Aines"/><input type="text" placeholder="Määrä (esim. 400 g)"/><button class="del-ing" onclick="delIng(this)">×</button></div>
+      <div class="ingredient-row"><input type="text" placeholder="Aines"/><input type="text" placeholder="Määrä"/><button class="del-ing" onclick="delIng(this)">×</button></div>`;
+  }
+
+  window.switchAddTab = function(t) {
+    document.getElementById('add-url').style.display = t === 'url' ? 'block' : 'none';
+    document.getElementById('add-manual').style.display = t === 'manual' ? 'block' : 'none';
+    document.querySelectorAll('.add-tab').forEach((el, i) => el.classList.toggle('active', ['url','manual'][i] === t));
+  };
+
+  function setStatus(id, msg, type) {
+    const el = document.getElementById(id);
+    el.style.display = msg ? 'block' : 'none';
+    el.className = 'status-msg status-' + type;
+    el.textContent = msg;
+  }
+
+  window.fetchRecipe = async function() {
+    const url = document.getElementById('url-input').value.trim();
+    if (!url) { setStatus('url-status', 'Syötä verkko-osoite', 'error'); return; }
+    setStatus('url-status', 'Haetaan reseptiä...', 'loading');
+    document.querySelector('.fetch-btn').disabled = true;
+    document.getElementById('url-preview').style.display = 'none';
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514', max_tokens: 1000,
+          messages: [{ role: 'user', content: `Hae tästä URL:sta reseptitiedot ja palauta VAIN JSON:\nURL: ${url}\n\n{"name":"nimi","emoji":"emoji","time":"X min","baseServings":4,"diff":"easy tai med","ingredients":[{"name":"aines","amount":"400 g","base":400,"unit":"g"}]}\n\nJos ei löydy: {"error":"Reseptiä ei löydy"}` }]
+        })
+      });
+      const data = await resp.json();
+      const text = data.content.find(b => b.type === 'text')?.text || '';
+      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      if (parsed.error) { setStatus('url-status', parsed.error, 'error'); document.querySelector('.fetch-btn').disabled = false; return; }
+      setStatus('url-status', 'Resepti löytyi! Tarkista tiedot.', 'success');
+      document.getElementById('prev-name').value = parsed.name || '';
+      document.getElementById('prev-emoji').value = parsed.emoji || '🍽';
+      document.getElementById('prev-time').value = parsed.time || '';
+      document.getElementById('prev-servings').value = parsed.baseServings || 4;
+      document.getElementById('prev-diff').value = parsed.diff || 'easy';
+      document.getElementById('prev-ings').innerHTML = (parsed.ingredients || []).map(ing =>
+        `<div class="ingredient-row"><input type="text" value="${ing.name}" placeholder="Aines"/><input type="text" value="${ing.amount}" placeholder="Määrä"/><button class="del-ing" onclick="delIng(this)">×</button></div>`
+      ).join('');
+      document.getElementById('url-preview').style.display = 'block';
+    } catch(e) {
+      setStatus('url-status', 'Virhe: reseptiä ei pystytty hakea.', 'error');
+    }
+    document.querySelector('.fetch-btn').disabled = false;
+  };
+
+  window.cancelPreview = function() {
+    document.getElementById('url-preview').style.display = 'none';
+    document.getElementById('url-input').value = '';
+    setStatus('url-status', '', '');
+  };
+
+  window.saveFromPreview = async function() {
+    const name = document.getElementById('prev-name').value;
+    if (!name) { setStatus('url-status', 'Lisää reseptin nimi', 'error'); return; }
+    const ings = collectIngs('prev-ings');
+    const baseServings = parseInt(document.getElementById('prev-servings').value) || 4;
+    await addDoc(recipesCol, {
+      name, emoji: document.getElementById('prev-emoji').value || '🍽',
+      time: document.getElementById('prev-time').value || '?',
+      baseServings, diff: document.getElementById('prev-diff').value || 'easy',
+      source: 'url', ingredients: ings, createdAt: serverTimestamp()
+    });
+    cancelPreview();
+    showTab('reseptit');
+  };
+
+  function collectIngs(cid) {
+    return Array.from(document.querySelectorAll('#' + cid + ' .ingredient-row')).map(row => {
+      const inp = row.querySelectorAll('input');
+      const name = inp[0].value.trim(), amount = inp[1].value.trim();
+      const m = amount.match(/^([\d.,]+)\s*(.*)$/);
+      return { name, amount, base: m ? parseFloat(m[1].replace(',', '.')) : null, unit: m ? m[2].trim() : '' };
+    }).filter(i => i.name);
+  }
+
+  window.addIngRow = function(cid) {
+    const div = document.getElementById(cid);
+    const row = document.createElement('div');
+    row.className = 'ingredient-row';
+    row.innerHTML = `<input type="text" placeholder="Aines"/><input type="text" placeholder="Määrä"/><button class="del-ing" onclick="delIng(this)">×</button>`;
+    div.appendChild(row);
+  };
+
+  window.delIng = function(btn) { btn.parentElement.remove(); };
+
+  function updateCounter() {
+    const c = Object.keys(shoppingList).length;
+    const el = document.getElementById('counter');
+    el.textContent = c;
+    el.style.display = c > 0 ? 'inline' : 'none';
+  }
+
+  function renderList() {
+    const keys = Object.keys(shoppingList);
+    document.getElementById('list-empty').style.display = keys.length === 0 ? 'block' : 'none';
+    document.getElementById('list-content').style.display = keys.length === 0 ? 'none' : 'block';
+    if (!keys.length) return;
+    document.getElementById('items-container').innerHTML = keys.map(k => `
+      <div class="shop-item ${checked[k] ? 'done' : ''}" onclick="toggleItem('${k}')">
+        <div class="checkbox ${checked[k] ? 'checked' : ''}">${checked[k] ? '✓' : ''}</div>
+        <span class="item-name ${checked[k] ? 'done' : ''}">${k}</span>
+        <span class="item-amount">${shoppingList[k]}</span>
+      </div>`).join('');
+    const done = keys.filter(k => checked[k]).length;
+    document.getElementById('progress').style.width = Math.round(done / keys.length * 100) + '%';
+  }
+
+  window.toggleItem = function(k) { checked[k] = !checked[k]; saveShoppingList(); renderList(); };
+  window.clearList = function() { shoppingList = {}; checked = {}; saveShoppingList(); updateCounter(); renderList(); };
+
+  updateCounter();
+</script>
+</body>
+</html>
