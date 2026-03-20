@@ -138,34 +138,7 @@
   <div class="content" id="tab-lisaa" style="display:none">
     <div class="add-card">
       <div id="edit-banner" class="edit-banner" style="display:none">✏️ Muokataan reseptiä</div>
-      <div class="add-tabs" id="add-tabs-row">
-        <div class="add-tab active" onclick="switchAddTab('url')">Liitä reseptiteksti</div>
-        <div class="add-tab" onclick="switchAddTab('manual')">Manuaalisesti</div>
-      </div>
-      <div class="add-body" id="add-url">
-        <div class="field-label">Kopioi reseptisivulta koko teksti ja liitä tähän</div>
-        <textarea id="url-input" placeholder="Kopioi reseptin nimi, ainekset ja ohjeet tähän..." style="min-height:140px;"></textarea>
-        <div id="url-status" style="display:none"></div>
-        <button class="fetch-btn" onclick="fetchRecipe()">Tunnista resepti</button>
-        <div id="url-preview" style="display:none; margin-top:16px;">
-          <div style="height:0.5px;background:#e0e0d8;margin-bottom:16px;"></div>
-          <div class="field-label">Nimi</div><input type="text" id="prev-name" />
-          <div style="display:flex;gap:8px;margin-bottom:10px;">
-            <div style="flex:0 0 auto;"><div class="field-label">Kuvake</div><input type="text" id="prev-emoji" style="width:64px;margin-bottom:0;" maxlength="2"/></div>
-            <div style="flex:1;"><div class="field-label">Vaikeustaso</div><select id="prev-diff" style="margin-bottom:0;"><option value="easy">Helppo</option><option value="med">Keskivaikea</option></select></div>
-          </div>
-          <div style="display:flex;gap:8px;margin-bottom:10px;">
-            <div style="flex:1;"><div class="field-label">Aika</div><input type="text" id="prev-time" placeholder="30 min" style="margin-bottom:0;"/></div>
-            <div style="flex:1;"><div class="field-label">Alkup. annokset</div><input type="number" id="prev-servings" placeholder="4" style="margin-bottom:0;" min="1"/></div>
-          </div>
-          <div class="field-label">Ainekset (tarkista)</div>
-          <div id="prev-ings"></div>
-          <button class="add-ing-btn" onclick="addIngRow('prev-ings')">+ Lisää aines</button>
-          <button class="save-btn" onclick="saveFromPreview()">Tallenna resepti</button>
-          <button class="cancel-btn" onclick="cancelPreview()">Peruuta</button>
-        </div>
-      </div>
-      <div class="add-body" id="add-manual" style="display:none">
+      <div class="add-body" id="add-manual">
         <input type="hidden" id="edit-id" value="" />
         <div class="field-label">Nimi</div><input type="text" id="man-name" placeholder="esim. Lohikeitto" />
         <div style="display:flex;gap:8px;margin-bottom:10px;">
@@ -384,16 +357,12 @@
       `<div class="ingredient-row"><input type="text" value="${ing.name}" placeholder="Aines"/><input type="text" value="${ing.amount}" placeholder="Määrä"/><button class="del-ing" onclick="delIng(this)">×</button></div>`
     ).join('');
     document.getElementById('edit-banner').style.display = 'block';
-    document.getElementById('add-tabs-row').style.display = 'none';
-    document.getElementById('add-url').style.display = 'none';
-    document.getElementById('add-manual').style.display = 'block';
     showTab('lisaa');
   };
 
   window.cancelEdit = function() {
     clearManualForm();
     document.getElementById('edit-banner').style.display = 'none';
-    document.getElementById('add-tabs-row').style.display = 'flex';
     showTab('reseptit');
   };
 
@@ -422,7 +391,6 @@
     }
     clearManualForm();
     document.getElementById('edit-banner').style.display = 'none';
-    document.getElementById('add-tabs-row').style.display = 'flex';
     showTab('reseptit');
   };
 
@@ -434,11 +402,7 @@
       <div class="ingredient-row"><input type="text" placeholder="Aines"/><input type="text" placeholder="Määrä"/><button class="del-ing" onclick="delIng(this)">×</button></div>`;
   }
 
-  window.switchAddTab = function(t) {
-    document.getElementById('add-url').style.display = t === 'url' ? 'block' : 'none';
-    document.getElementById('add-manual').style.display = t === 'manual' ? 'block' : 'none';
-    document.querySelectorAll('.add-tab').forEach((el, i) => el.classList.toggle('active', ['url','manual'][i] === t));
-  };
+
 
   function setStatus(id, msg, type) {
     const el = document.getElementById(id);
@@ -447,61 +411,9 @@
     el.textContent = msg;
   }
 
-  window.fetchRecipe = async function() {
-    const txt = document.getElementById('url-input').value.trim();
-    if (!txt) { setStatus('url-status', 'Liitä reseptiteksti kenttään', 'error'); return; }
-    setStatus('url-status', 'Tunnistetaan reseptiä...', 'loading');
-    document.querySelector('.fetch-btn').disabled = true;
-    document.getElementById('url-preview').style.display = 'none';
-    try {
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514', max_tokens: 1000,
-          messages: [{ role: 'user', content: `Pura tästä reseptitekstistä tiedot ja palauta VAIN JSON, ei muuta tekstiä:\n\n${txt}\n\nMuoto:\n{"name":"reseptin nimi","emoji":"sopiva emoji","time":"X min","baseServings":4,"diff":"easy tai med","ingredients":[{"name":"aines","amount":"400 g","base":400,"unit":"g"}]}\n\nbase on luku ilman yksikköä, unit on yksikkö erikseen. Jos teksti ei ole resepti: {"error":"Ei resepti"}` }]
-        })
-      });
-      const data = await resp.json();
-      const text = data.content.find(b => b.type === 'text')?.text || '';
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
-      if (parsed.error) { setStatus('url-status', parsed.error, 'error'); document.querySelector('.fetch-btn').disabled = false; return; }
-      setStatus('url-status', 'Resepti tunnistettu! Tarkista tiedot.', 'success');
-      document.getElementById('prev-name').value = parsed.name || '';
-      document.getElementById('prev-emoji').value = parsed.emoji || '🍽';
-      document.getElementById('prev-time').value = parsed.time || '';
-      document.getElementById('prev-servings').value = parsed.baseServings || 4;
-      document.getElementById('prev-diff').value = parsed.diff || 'easy';
-      document.getElementById('prev-ings').innerHTML = (parsed.ingredients || []).map(ing =>
-        `<div class="ingredient-row"><input type="text" value="${ing.name}" placeholder="Aines"/><input type="text" value="${ing.amount}" placeholder="Määrä"/><button class="del-ing" onclick="delIng(this)">×</button></div>`
-      ).join('');
-      document.getElementById('url-preview').style.display = 'block';
-    } catch(e) {
-      setStatus('url-status', 'Virhe tunnistuksessa. Kokeile manuaalista lisäystä.', 'error');
-    }
-    document.querySelector('.fetch-btn').disabled = false;
-  };
 
-  window.cancelPreview = function() {
-    document.getElementById('url-preview').style.display = 'none';
-    document.getElementById('url-input').value = '';
-    setStatus('url-status', '', '');
-  };
 
-  window.saveFromPreview = async function() {
-    const name = document.getElementById('prev-name').value;
-    if (!name) { setStatus('url-status', 'Lisää reseptin nimi', 'error'); return; }
-    const ings = collectIngs('prev-ings');
-    const baseServings = parseInt(document.getElementById('prev-servings').value) || 4;
-    await addDoc(recipesCol, {
-      name, emoji: document.getElementById('prev-emoji').value || '🍽',
-      time: document.getElementById('prev-time').value || '?',
-      baseServings, diff: document.getElementById('prev-diff').value || 'easy',
-      source: 'url', ingredients: ings, createdAt: serverTimestamp()
-    });
-    cancelPreview();
-    showTab('reseptit');
-  };
+
 
   function collectIngs(cid) {
     return Array.from(document.querySelectorAll('#' + cid + ' .ingredient-row')).map(row => {
